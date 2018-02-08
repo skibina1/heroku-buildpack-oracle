@@ -28,7 +28,7 @@ curl ${ORACLE_INSTANT_CLIENT_URL} -L -s -o - | tar -xz -C \
 	${BUILD_DIR}/${ORACLE_INSTANT_CLIENT_DIR} -f -
 
 if [[ $? != 0 ]]; then
-  indent "Failure while downloading Oracle instant client archive: $?"
+  indent "Failure while downloading Oracle instant client archive"
   exit 1
 fi
 
@@ -38,25 +38,39 @@ ORACLE_NETWORK_ADMIN_DIR="${BUILD_DIR}/${ORACLE_INSTANT_CLIENT_DIR}/network/admi
 mkdir -p ${ORACLE_NETWORK_ADMIN_DIR}
 
 if [[ -s $ORACLE_CONFIG ]]; then
-	TNSNAMES_FILENAME=$(cat $ORACLE_CONFIG | grep tnsnames.ora | cut -d' ' -f2)
+  TNSNAMES_FILENAME=$(grep tnsnames.ora $ORACLE_CONFIG | cut -d' ' -f2)
   if [[ -f $BUILD_DIR/$TNSNAMES_FILENAME ]]; then
     indent "Symlinking ${TNSNAMES_FILENAME} to ${ORACLE_INSTANT_CLIENT_DIR}/network/admin/tnsnames.ora"
     ln -sf $BUILD_DIR/$TNSNAMES_FILENAME ${ORACLE_NETWORK_ADMIN_DIR}/tnsnames.ora
-	fi
+  fi
 
-  SQLNET_FILENAME=$(cat $ORACLE_CONFIG | grep sqlnet.ora | cut -d' ' -f2)
+  SQLNET_FILENAME=$(grep sqlnet.ora $ORACLE_CONFIG | cut -d' ' -f2)
   if [[ -f $BUILD_DIR/$SQLNET_FILENAME ]]; then
     indent "Symlinking ${SQLNET_FILENAME} to ${ORACLE_INSTANT_CLIENT_DIR}/network/admin/sqlnet.ora"
     ln -sf $BUILD_DIR/$SQLNET_FILENAME ${ORACLE_NETWORK_ADMIN_DIR}/sqlnet.ora
-	fi
-else
-	puts-warn ".oracle.yml is empty or invalid"
+  fi
 fi
+
+ORACLE_HOME="${BUILD_DIR}/${ORACLE_INSTANT_CLIENT_DIR}"
+
+ident "Create oci8.pc"
+cat <<EOF > $ORACLE_HOME/oci8.pc
+# Package Information for pkg-config
+
+prefix=${ORACLE_HOME}
+libdir=\${prefix}
+includedir=\${prefix}/sdk/include/
+
+Name: OCI
+Description: Oracle database engine
+Version: 11.2
+Libs: -L\${libdir} -lclntsh
+Libs.private:
+Cflags: -I\${includedir}
+EOF
 
 indent "Create profile.d script"
 mkdir -p ${BUILD_DIR}/.profile.d
-
-ORACLE_HOME="${BUILD_DIR}/${ORACLE_INSTANT_CLIENT_DIR}"
 
 cat <<EOF > ${BUILD_DIR}/.profile.d/oracle.sh
   export OCI_LIB_DIR=${ORACLE_HOME}
@@ -65,6 +79,7 @@ cat <<EOF > ${BUILD_DIR}/.profile.d/oracle.sh
   export LD_LIBRARY_PATH=${ORACLE_HOME}:\$LD_LIBRARY_PATH}
   export PATH=${ORACLE_HOME}:\$PATH
   export TNS_ADMIN=${ORACLE_HOME}/network/admin
+	export PKG_CONFIG_PATH=${ORACLE_HOME}
 EOF
 
 source ${BUILD_DIR}/.profile.d/oracle.sh

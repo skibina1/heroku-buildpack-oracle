@@ -53,7 +53,7 @@ fi
 
 ORACLE_HOME="${BUILD_DIR}/${ORACLE_INSTANT_CLIENT_DIR}"
 
-ident "Create oci8.pc"
+indent "Create oci8.pc"
 cat <<EOF > ${ORACLE_HOME}/oci8.pc
 # Package Information for pkg-config
 
